@@ -6,6 +6,8 @@ grid_width = 50
 grid_height = 50
 scaling = 20
 
+fire_lifetime = 500
+
 max_frames = 10000
 
 BlockColor = {
@@ -30,6 +32,7 @@ class GridObject:
                 row.append(0)
             grid.append(row)
         self.Grid = grid
+        self.fire_lifetimes = {}  # Store the lifetime of each fire block
 
     def Get(self, x, y):
         if 1 <= x <= self.Columns and 1 <= y <= self.Rows:
@@ -37,8 +40,19 @@ class GridObject:
         else:
             return None
 
+    def GetLifetime(self, x, y):
+        return self.fire_lifetimes.get((x, y), 0)  # Return 0 if the fire block is not in the dictionary
+
     def Set(self, x, y, id):
         self.Grid[self.Rows - y][x - 1] = id
+        if id == 7:  # Fire block
+            self.fire_lifetimes[(x, y)] = fire_lifetime  # Set the lifetime of the fire block
+
+    def Get(self, x, y):
+        if 1 <= x <= self.Columns and 1 <= y <= self.Rows:
+            return self.Grid[self.Rows - y][x - 1]
+        else:
+            return None
 
 class Block(pygame.sprite.Sprite):
     def __init__(self, x, y, id):
@@ -245,11 +259,39 @@ def UpdateScreen():
             if GridObject.Get(x, y - 1) == 0:
                 GridObject.Set(x, y - 1, 1)
         
-        def SimulateFire(x, y, z, updated_blocks):
+        def SimulateFire(x, y, updated_blocks):
             for dy in range(y - 1, y + 2): 
                 for dx in range(x - 1, x + 2):
-                    if GridObject.Get(dx, dy) == 4 and random.randint(1, 1000) == 1:
-                        GridObject.Set(dx, dy, 7)
+                    if GridObject.Get(dx, dy) == 3:
+                        GridObject.Set(x, y, 4)
+                        return
+
+            current_lifetime = GridObject.GetLifetime(x, y)
+            if current_lifetime > 0:
+                updated_lifetime = max(current_lifetime - 1, 0)
+                GridObject.fire_lifetimes[(x, y)] = updated_lifetime
+                if updated_lifetime == 0:
+                    GridObject.Set(x, y, 0)
+        
+        def SimulateWood(x, y, updated_blocks):
+            wet = 0
+            for dy in range(y - 1, y + 2): 
+                for dx in range(x - 1, x + 2):
+                    if GridObject.Get(dx, dy) == 3:
+                        wet = 1
+                        break
+            
+            if wet == 0:
+                fire_count = 0
+                for dy in range(y - 1, y + 2): 
+                    for dx in range(x - 1, x + 2):
+                        if GridObject.Get(dx, dy) == 7:
+                            fire_count += 1
+                
+                if fire_count > 0:
+                    fire_chance = 100 - fire_count
+                    if random.randint(1, fire_chance) == 1:
+                        GridObject.Set(x, y, 7)
 
         if simulation_running and not drawing:
             if frame < max_frames:
@@ -264,12 +306,14 @@ def UpdateScreen():
                             SimulateSand(x, y, updated_blocks)
                         elif current_block == 3 and (x, y) not in updated_blocks:
                             SimulateWater(x, y, updated_blocks)
+                        elif current_block == 4 and (x, y) not in updated_blocks:
+                            SimulateWood(x, y, updated_blocks)
                         elif current_block == 5 and (x, y) not in updated_blocks:
                             SimulateWaterSource(x, y, updated_blocks)
                         elif current_block == 6 and (x, y) not in updated_blocks:
                             SimulateSandSource(x, y, updated_blocks)
                         elif current_block == 7 and (x, y) not in updated_blocks:
-                            SimulateFire(x, y, 5, updated_blocks)
+                            SimulateFire(x, y, updated_blocks)
         pass
 
     grid = GridObject()
