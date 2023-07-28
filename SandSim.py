@@ -274,24 +274,20 @@ def UpdateScreen():
                     GridObject.Set(x, y, 0)
         
         def SimulateWood(x, y, updated_blocks):
-            wet = 0
             for dy in range(y - 1, y + 2): 
                 for dx in range(x - 1, x + 2):
                     if GridObject.Get(dx, dy) == 3:
-                        wet = 1
-                        break
+                        return
             
-            if wet == 0:
-                fire_count = 0
-                for dy in range(y - 1, y + 2): 
-                    for dx in range(x - 1, x + 2):
-                        if GridObject.Get(dx, dy) == 7:
-                            fire_count += 1
-                
-                if fire_count > 0:
-                    fire_chance = 100 - fire_count
-                    if random.randint(1, fire_chance) == 1:
-                        GridObject.Set(x, y, 7)
+            fire_count = 0
+            for dy in range(y - 1, y + 2): 
+                for dx in range(x - 1, x + 2):
+                    if GridObject.Get(dx, dy) == 7:
+                        fire_count += 1
+            
+            fire_chance = 8 - fire_count
+            if fire_count > 0 and random.randint(1, fire_chance * 5) == 1:
+                GridObject.Set(x, y, 7)
 
         if simulation_running and not drawing:
             if frame < max_frames:
