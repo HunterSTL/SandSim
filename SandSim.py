@@ -2,9 +2,9 @@ import pygame
 import math
 import random
 
-grid_width = 150
-grid_height = 250
-scaling = 4
+grid_width = 50
+grid_height = 50
+scaling = 20
 
 max_frames = 10000
 
@@ -245,11 +245,10 @@ def UpdateScreen():
             if GridObject.Get(x, y - 1) == 0:
                 GridObject.Set(x, y - 1, 1)
         
-        def SimulateFire(x, y, updated_blocks):
-            for dy in range(y - 1, y + 1): 
-                for dx in range(x - 1, x + 1):
-                    if GridObject.Get(dx, dy) == 4:
-                        
+        def SimulateFire(x, y, z, updated_blocks):
+            for dy in range(y - 1, y + 2): 
+                for dx in range(x - 1, x + 2):
+                    if GridObject.Get(dx, dy) == 4 and random.randint(1, 1000) == 1:
                         GridObject.Set(dx, dy, 7)
 
         if simulation_running and not drawing:
@@ -269,6 +268,8 @@ def UpdateScreen():
                             SimulateWaterSource(x, y, updated_blocks)
                         elif current_block == 6 and (x, y) not in updated_blocks:
                             SimulateSandSource(x, y, updated_blocks)
+                        elif current_block == 7 and (x, y) not in updated_blocks:
+                            SimulateFire(x, y, 5, updated_blocks)
         pass
 
     grid = GridObject()
@@ -279,7 +280,7 @@ def UpdateScreen():
 
     drawing = False
     erasing = False
-    hotbar = Hotbar([0, 1, 2, 3, 4, 5, 6])
+    hotbar = Hotbar([0, 1, 2, 3, 4, 5, 6, 7])
 
     while True:
         for event in pygame.event.get():
