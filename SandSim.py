@@ -20,7 +20,8 @@ BlockColor = {
     5: (50, 50, 127),   # Water Source
     6: (100, 100, 0),   # Sand Source
     7: (245, 84, 66),   # Fire
-    8: (150, 150, 150)  # Smoke
+    8: (150, 150, 150), # Smoke
+    9: (255, 0, 0)      #TNT
 }
 
 class GridObject:
@@ -63,7 +64,7 @@ class GridObject:
         else:
             return None
 
-class Block(pygame.sprite.Sprite):
+class Sprite(pygame.sprite.Sprite):
     def __init__(self, x, y, id):
         super().__init__()
         self.image = pygame.Surface((scaling, scaling))
@@ -158,6 +159,7 @@ def UpdateScreen():
         global sand_source_group
         global fire_group
         global smoke_group
+        global tnt_group
 
         air_group = pygame.sprite.Group()
         sand_group = pygame.sprite.Group()
@@ -168,27 +170,30 @@ def UpdateScreen():
         sand_source_group = pygame.sprite.Group()
         fire_group = pygame.sprite.Group()
         smoke_group = pygame.sprite.Group()
+        tnt_group = pygame.sprite.Group()
 
         for y, row in enumerate(grid.Grid):
             for x, id in enumerate(row):
                 if id == 1:
-                    sand_group.add(Block(x, y, 1))
+                    sand_group.add(Sprite(x, y, 1))
                 elif id == 2:
-                    rock_group.add(Block(x, y, 2))
+                    rock_group.add(Sprite(x, y, 2))
                 elif id == 3:
-                    water_group.add(Block(x, y, 3))
+                    water_group.add(Sprite(x, y, 3))
                 elif id == 4:
-                    wood_group.add(Block(x, y, 4))
+                    wood_group.add(Sprite(x, y, 4))
                 elif id == 5:
-                    water_source_group.add(Block(x, y, 5))
+                    water_source_group.add(Sprite(x, y, 5))
                 elif id == 6:
-                    sand_source_group.add(Block(x, y, 6))
+                    sand_source_group.add(Sprite(x, y, 6))
                 elif id == 7:
-                    fire_group.add(Block(x, y, 7))
+                    fire_group.add(Sprite(x, y, 7))
                 elif id == 8:
-                    smoke_group.add(Block(x, y, 8))
+                    smoke_group.add(Sprite(x, y, 8))
+                elif id == 9:
+                    smoke_group.add(Sprite(x, y, 9))
 
-        sprite_groups = [air_group, sand_group, rock_group, water_group, wood_group, water_source_group, sand_source_group, fire_group, smoke_group]
+        sprite_groups = [air_group, sand_group, rock_group, water_group, wood_group, water_source_group, sand_source_group, fire_group, smoke_group, tnt_group]
 
     def UpdateSpritePositions():
         global sprite_groups
@@ -200,25 +205,28 @@ def UpdateScreen():
         sand_source_group.empty()
         fire_group.empty()
         smoke_group.empty()
+        tnt_group.empty()
 
         for y, row in enumerate(grid.Grid):
             for x, id in enumerate(row):
                 if id == 1:
-                    sand_group.add(Block(x, y, 1))
+                    sand_group.add(Sprite(x, y, 1))
                 elif id == 2:
-                    rock_group.add(Block(x, y, 2))
+                    rock_group.add(Sprite(x, y, 2))
                 elif id == 3:
-                    water_group.add(Block(x, y, 3))
+                    water_group.add(Sprite(x, y, 3))
                 elif id == 4:
-                    wood_group.add(Block(x, y, 4))
+                    wood_group.add(Sprite(x, y, 4))
                 elif id == 5:
-                    water_source_group.add(Block(x, y, 5))
+                    water_source_group.add(Sprite(x, y, 5))
                 elif id == 6:
-                    sand_source_group.add(Block(x, y, 6))
+                    sand_source_group.add(Sprite(x, y, 6))
                 elif id == 7:
-                    fire_group.add(Block(x, y, 7))
+                    fire_group.add(Sprite(x, y, 7))
                 elif id == 8:
-                    fire_group.add(Block(x, y, 8))
+                    fire_group.add(Sprite(x, y, 8))
+                elif id == 9:
+                    fire_group.add(Sprite(x, y, 9))
 
     def SimulateGrid(GridObject):
         global frame
@@ -337,6 +345,22 @@ def UpdateScreen():
             fire_chance = 8 - fire_count
             if fire_count > 0 and random.randint(1, fire_chance * 5) == 1:
                 GridObject.Set(x, y, 7)
+        
+        def SimulateTNT(x, y, updated_blocks):
+            def ExplodeTNT(x, y):
+                GridObject.Set(x, y, 0)
+                for dy in range(y - 3, y + 4): 
+                    for dx in range(x - 3, x + 4):
+                        if GridObject.Get(dx, dy) == 9:
+                            ExplodeTNT(dx, dy)
+                        if dx > 0 and dx < grid_width and dy > 0 and dy < grid_height:
+                            GridObject.Set(dx, dy, 0)
+
+            for dy in range(y - 1, y + 2): 
+                for dx in range(x - 1, x + 2):
+                    if GridObject.Get(dx, dy) == 7:
+                        ExplodeTNT(x, y)
+                        return
 
         if simulation_running and not drawing:
             if frame < max_frames:
@@ -361,6 +385,8 @@ def UpdateScreen():
                             SimulateFire(x, y, updated_blocks)
                         elif current_block == 8 and (x, y) not in updated_blocks:
                             SimulateSmoke(x, y, updated_blocks)
+                        elif current_block == 9 and (x, y) not in updated_blocks:
+                            SimulateTNT(x, y, updated_blocks)
         pass
 
     grid = GridObject()
@@ -371,7 +397,7 @@ def UpdateScreen():
 
     drawing = False
     erasing = False
-    hotbar = Hotbar([0, 1, 2, 3, 4, 5, 6, 7, 8])
+    hotbar = Hotbar([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 
     while True:
         for event in pygame.event.get():
