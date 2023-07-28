@@ -7,6 +7,7 @@ grid_height = 50
 scaling = 20
 
 fire_lifetime = 500
+smoke_lifetime = 10
 
 max_frames = 10000
 
@@ -18,7 +19,8 @@ BlockColor = {
     4: (100, 50, 0),    # Wood
     5: (50, 50, 127),   # Water Source
     6: (100, 100, 0),   # Sand Source
-    7: (245, 84, 66)    # Fire
+    7: (245, 84, 66),   # Fire
+    8: (150, 150, 150)  # Smoke
 }
 
 class GridObject:
@@ -32,7 +34,8 @@ class GridObject:
                 row.append(0)
             grid.append(row)
         self.Grid = grid
-        self.fire_lifetimes = {}  # Store the lifetime of each fire block
+        self.fire_lifetimes = {}    # Store the lifetime of each fire block
+        self.smoke_lifetimes = {}   # Store the lifetime of each smoke block
 
     def Get(self, x, y):
         if 1 <= x <= self.Columns and 1 <= y <= self.Rows:
@@ -41,12 +44,18 @@ class GridObject:
             return None
 
     def GetLifetime(self, x, y):
-        return self.fire_lifetimes.get((x, y), 0)  # Return 0 if the fire block is not in the dictionary
+        id = self.Grid[self.Rows - y][x - 1]
+        if id == 7:
+            return self.fire_lifetimes.get((x, y), 0)   # Return 0 if the fire block is not in the dictionary
+        elif id == 8:
+            return self.smoke_lifetimes.get((x, y), 0)  # Return 0 if the smoke block is not in the dictionary
 
     def Set(self, x, y, id):
         self.Grid[self.Rows - y][x - 1] = id
-        if id == 7:  # Fire block
+        if id == 7:     # Fire block
             self.fire_lifetimes[(x, y)] = fire_lifetime  # Set the lifetime of the fire block
+        elif id == 8:   # Smoke block
+            self.smoke_lifetimes[(x, y)] = smoke_lifetime
 
     def Get(self, x, y):
         if 1 <= x <= self.Columns and 1 <= y <= self.Rows:
@@ -148,6 +157,7 @@ def UpdateScreen():
         global water_source_group
         global sand_source_group
         global fire_group
+        global smoke_group
 
         air_group = pygame.sprite.Group()
         sand_group = pygame.sprite.Group()
@@ -157,6 +167,7 @@ def UpdateScreen():
         water_source_group = pygame.sprite.Group()
         sand_source_group = pygame.sprite.Group()
         fire_group = pygame.sprite.Group()
+        smoke_group = pygame.sprite.Group()
 
         for y, row in enumerate(grid.Grid):
             for x, id in enumerate(row):
@@ -174,8 +185,10 @@ def UpdateScreen():
                     sand_source_group.add(Block(x, y, 6))
                 elif id == 7:
                     fire_group.add(Block(x, y, 7))
+                elif id == 8:
+                    smoke_group.add(Block(x, y, 8))
 
-        sprite_groups = [air_group, sand_group, rock_group, water_group, wood_group, water_source_group, sand_source_group, fire_group]
+        sprite_groups = [air_group, sand_group, rock_group, water_group, wood_group, water_source_group, sand_source_group, fire_group, smoke_group]
 
     def UpdateSpritePositions():
         global sprite_groups
@@ -186,6 +199,7 @@ def UpdateScreen():
         water_source_group.empty()
         sand_source_group.empty()
         fire_group.empty()
+        smoke_group.empty()
 
         for y, row in enumerate(grid.Grid):
             for x, id in enumerate(row):
@@ -203,6 +217,8 @@ def UpdateScreen():
                     sand_source_group.add(Block(x, y, 6))
                 elif id == 7:
                     fire_group.add(Block(x, y, 7))
+                elif id == 8:
+                    fire_group.add(Block(x, y, 8))
 
     def SimulateGrid(GridObject):
         global frame
@@ -268,10 +284,43 @@ def UpdateScreen():
 
             current_lifetime = GridObject.GetLifetime(x, y)
             if current_lifetime > 0:
+                if GridObject.Get(x, y + 1) == 0:
+                    if random.randint(1, 10) == 1:
+                        GridObject.Set(x, y + 1, 8)
                 updated_lifetime = max(current_lifetime - 1, 0)
                 GridObject.fire_lifetimes[(x, y)] = updated_lifetime
                 if updated_lifetime == 0:
                     GridObject.Set(x, y, 0)
+
+        def SimulateSmoke(x, y, updated_blocks):
+            current_lifetime = GridObject.GetLifetime(x, y)
+            if current_lifetime > 0:
+                updated_lifetime = max(current_lifetime - 1, 0)
+                GridObject.smoke_lifetimes[(x, y)] = updated_lifetime
+                if updated_lifetime == 0:
+                    GridObject.Set(x, y, 0)
+                    return
+
+            if GridObject.Get(x, y + 1) == 0:
+                GridObject.Set(x, y, 0)
+                GridObject.Set(x, y + 1, 8)
+                updated_blocks.add((x, y + 1))
+            elif GridObject.Get(x - 1, y + 1) == 0:
+                GridObject.Set(x, y, 0)
+                GridObject.Set(x - 1, y + 1, 8)
+                updated_blocks.add((x - 1, y + 1))
+            elif GridObject.Get(x + 1, y + 1) == 0:
+                GridObject.Set(x, y, 0)
+                GridObject.Set(x + 1, y + 1, 8)
+                updated_blocks.add((x + 1, y + 1))
+            elif GridObject.Get(x - 1, y) == 0:
+                GridObject.Set(x, y, 0)
+                GridObject.Set(x - 1, y, 8)
+                updated_blocks.add((x - 1, y))
+            elif GridObject.Get(x + 1, y) == 0:
+                GridObject.Set(x, y, 0)
+                GridObject.Set(x + 1, y, 8)
+                updated_blocks.add((x + 1, y))
         
         def SimulateWood(x, y, updated_blocks):
             for dy in range(y - 1, y + 2): 
@@ -310,6 +359,8 @@ def UpdateScreen():
                             SimulateSandSource(x, y, updated_blocks)
                         elif current_block == 7 and (x, y) not in updated_blocks:
                             SimulateFire(x, y, updated_blocks)
+                        elif current_block == 8 and (x, y) not in updated_blocks:
+                            SimulateSmoke(x, y, updated_blocks)
         pass
 
     grid = GridObject()
@@ -320,7 +371,7 @@ def UpdateScreen():
 
     drawing = False
     erasing = False
-    hotbar = Hotbar([0, 1, 2, 3, 4, 5, 6, 7])
+    hotbar = Hotbar([0, 1, 2, 3, 4, 5, 6, 7, 8])
 
     while True:
         for event in pygame.event.get():
