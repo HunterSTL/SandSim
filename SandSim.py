@@ -7,22 +7,27 @@ grid_height = 50
 scaling = 20
 
 fire_lifetime = 500
-smoke_lifetime = 10
+smoke_lifetime = 1000
+unique_number = 0
 
 max_frames = 10000
 
 class Cell:
-    def __init__(self, x, y, name, id, color, lifetime):
+    def __init__(self, x, y, name, id, color, lifetime, unique_number):
         self.x = x
         self.y = y
         self.name = name
         self.id = id
         self.color = color
         self.lifetime = lifetime
+        self.unique_number = unique_number
 
     @classmethod
     def create(cls, x, y, name):
-        return cls(x, y, name, Block[name].id, Block[name].color, Block[name].lifetime)
+        global unique_number
+        unique_number += 1
+        cls.unique_number = unique_number
+        return cls(x, y, name, Block[name].id, Block[name].color, Block[name].lifetime, unique_number)
 
 class Grid:
     def __init__(self, width, height):
@@ -42,6 +47,13 @@ class Grid:
             return self.grid[self.rows - y][x - 1]
         else:
             return Block["Out Of Bounds"]
+        
+    def get_by_unique_number(self, unique_number):
+        for row in self.grid:
+            for cell in row:
+                if cell.unique_number == unique_number:
+                    return cell
+        return None
         
     def set(self, x, y, name):
         cell = Cell.create(x, y, name)
@@ -274,34 +286,36 @@ def SimulateGrid(grid):
             if updated_lifetime == 0:
                 grid.set(x, y, "Air")
 
-    def SimulateSmoke(x, y, updated_blocks):
-        cell = grid.get(x, y)
-        if cell.lifetime > 0:
-            updated_lifetime = max(cell.lifetime - 1, 0)
-            cell.lifetime = updated_lifetime
+    def SimulateSmoke(unique_number, updated_blocks):
+        cell_smoke = grid.get_by_unique_number(unique_number)
+        if cell_smoke.lifetime > 0:
+            updated_lifetime = max(cell_smoke.lifetime - 1, 0)
+            cell_smoke.lifetime = updated_lifetime
             if updated_lifetime == 0:
                 grid.set(x, y, "Air")
                 return
 
         if grid.get(x, y + 1).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x, y + 1, "Smoke")
+            cell_smoke.y += 1
+            grid.set(x, y , "Air")
             updated_blocks.add((x, y + 1))
         elif grid.get(x - 1, y + 1).name == "Air":
+            cell_smoke.x -= 1
+            cell_smoke.y += 1
             grid.set(x, y, "Air")
-            grid.set(x - 1, y + 1, "Smoke")
             updated_blocks.add((x - 1, y + 1))
         elif grid.get(x + 1, y + 1).name == "Air":
+            cell_smoke.x += 1
+            cell_smoke.y += 1
             grid.set(x, y, "Air")
-            grid.set(x + 1, y + 1, "Smoke")
             updated_blocks.add((x + 1, y + 1))
         elif grid.get(x - 1, y).name == "Air":
+            cell_smoke.x -= 1
             grid.set(x, y, "Air")
-            grid.set(x - 1, y, "Smoke")
             updated_blocks.add((x - 1, y))
         elif grid.get(x + 1, y).name == "Air":
+            cell_smoke.x += 1
             grid.set(x, y, "Air")
-            grid.set(x + 1, y, "Smoke")
             updated_blocks.add((x + 1, y))
     
     def SimulateWood(x, y, updated_blocks):
@@ -358,7 +372,7 @@ def SimulateGrid(grid):
                     elif cell.name == "Fire" and (x, y) not in updated_blocks:
                         SimulateFire(x, y, updated_blocks)
                     elif cell.name == "Smoke" and (x, y) not in updated_blocks:
-                        SimulateSmoke(x, y, updated_blocks)
+                        SimulateSmoke(cell.unique_number, updated_blocks)
                     elif cell.name == "TNT" and (x, y) not in updated_blocks:
                         SimulateTNT(x, y, updated_blocks)
 
@@ -424,17 +438,17 @@ def UpdateScreen():
         pygame.display.flip()
 
 Block = {
-    "Air":              Cell(None, None, "Air", 0, (0, 0, 0), -1),
-    "Sand":             Cell(None, None, "Sand", 1, (200, 200, 0), -1),
-    "Rock":             Cell(None, None, "Rock", 2, (100, 100, 100), -1),
-    "Water":            Cell(None, None, "Water", 3, (100, 100, 255), -1),
-    "Wood":             Cell(None, None, "Wood", 4, (100, 50, 0), -1),
-    "Water Source":     Cell(None, None, "Water Source", 5, (50, 50, 127), -1),
-    "Sand Source":      Cell(None, None, "Sand Source", 6, (100, 100, 0), -1),
-    "Fire":             Cell(None, None, "Fire", 7, (245, 84, 66), 500),
-    "Smoke":            Cell(None, None, "Smoke", 8, (150, 150, 150), 50),
-    "TNT":              Cell(None, None, "TNT", 9, (255, 0, 0), -1),
-    "Out Of Bounds":    Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1)
+    "Air":              Cell(None, None, "Air", 0, (0, 0, 0), -1, None),
+    "Sand":             Cell(None, None, "Sand", 1, (200, 200, 0), -1, None),
+    "Rock":             Cell(None, None, "Rock", 2, (100, 100, 100), -1, None),
+    "Water":            Cell(None, None, "Water", 3, (100, 100, 255), -1, None),
+    "Wood":             Cell(None, None, "Wood", 4, (100, 50, 0), -1, None),
+    "Water Source":     Cell(None, None, "Water Source", 5, (50, 50, 127), -1, None),
+    "Sand Source":      Cell(None, None, "Sand Source", 6, (100, 100, 0), -1, None),
+    "Fire":             Cell(None, None, "Fire", 7, (245, 84, 66), 500, None),
+    "Smoke":            Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None),
+    "TNT":              Cell(None, None, "TNT", 9, (255, 0, 0), -1, None),
+    "Out Of Bounds":    Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None)
 }
 
 if __name__ == "__main__":
