@@ -3,8 +3,8 @@ import math
 import random
 import time
 
-grid_width = 20
-grid_height = 30
+grid_width = 100
+grid_height = 80
 scaling = 10
 
 fire_lifetime = 500
@@ -170,83 +170,24 @@ def InitializeScreen():
 def CreateSpriteGroups():
     global grid
     global sprite_groups
-    global air_group
-    global sand_group
-    global rock_group
-    global water_group
-    global wood_group
-    global water_source_group
-    global sand_source_group
-    global fire_group
-    global smoke_group
-    global tnt_group
 
-    air_group = pygame.sprite.Group()
-    sand_group = pygame.sprite.Group()
-    rock_group = pygame.sprite.Group()
-    water_group = pygame.sprite.Group()
-    wood_group = pygame.sprite.Group()
-    water_source_group = pygame.sprite.Group()
-    sand_source_group = pygame.sprite.Group()
-    fire_group = pygame.sprite.Group()
-    smoke_group = pygame.sprite.Group()
-    tnt_group = pygame.sprite.Group()
+    sprite_groups = [pygame.sprite.Group() for _ in range(len(Block))]
 
     for y, row in enumerate(grid.grid):
         for x, cell in enumerate(row):
-            if cell.name == "Sand":
-                sand_group.add(Sprite(x, y, cell))
-            elif cell.name == "Rock":
-                rock_group.add(Sprite(x, y, cell))
-            elif cell.name == "Water":
-                water_group.add(Sprite(x, y, cell))
-            elif cell.name == "Wood":
-                wood_group.add(Sprite(x, y, cell))
-            elif cell.name == "Water Source":
-                water_source_group.add(Sprite(x, y, cell))
-            elif cell.name == "Sand Source":
-                sand_source_group.add(Sprite(x, y, cell))
-            elif cell.name == "Fire":
-                fire_group.add(Sprite(x, y, cell))
-            elif cell.name == "Smoke":
-                smoke_group.add(Sprite(x, y, cell))
-            elif cell.name == "TNT":
-                tnt_group.add(Sprite(x, y, cell))
-
-    sprite_groups = [air_group, sand_group, rock_group, water_group, wood_group, water_source_group, sand_source_group, fire_group, smoke_group, tnt_group]
+            if cell.name != "Air":
+                sprite_groups[cell.id].add(Sprite(x, y, cell))
 
 def UpdateSpritePositions():
     global sprite_groups
-    sand_group.empty()
-    rock_group.empty()
-    water_group.empty()
-    wood_group.empty()
-    water_source_group.empty()
-    sand_source_group.empty()
-    fire_group.empty()
-    smoke_group.empty()
-    tnt_group.empty()
+
+    for group in sprite_groups:
+        group.empty()
 
     for y, row in enumerate(grid.grid):
         for x, cell in enumerate(row):
-            if cell.name == "Sand":
-                sand_group.add(Sprite(x, y, cell))
-            elif cell.name == "Rock":
-                rock_group.add(Sprite(x, y, cell))
-            elif cell.name == "Water":
-                water_group.add(Sprite(x, y, cell))
-            elif cell.name == "Wood":
-                wood_group.add(Sprite(x, y, cell))
-            elif cell.name == "Water Source":
-                water_source_group.add(Sprite(x, y, cell))
-            elif cell.name == "Sand Source":
-                sand_source_group.add(Sprite(x, y, cell))
-            elif cell.name == "Fire":
-                fire_group.add(Sprite(x, y, cell))
-            elif cell.name == "Smoke":
-                smoke_group.add(Sprite(x, y, cell))
-            elif cell.name == "TNT":
-                tnt_group.add(Sprite(x, y, cell))
+            if cell.name != "Air":
+                sprite_groups[cell.id].add(Sprite(x, y, cell))
 
 def SimulateGrid(grid):
     global frame
@@ -460,13 +401,14 @@ def UpdateScreen():
             drawing = False
             erasing = False
 
-        clock.tick(60)
+        if simulation_running or drawing or erasing:
+            SimulateGrid(grid)
+            UpdateSpritePositions()
+            DrawGrid(Screen, sprite_groups)
 
-        SimulateGrid(grid)
-        UpdateSpritePositions()
-        DrawGrid(Screen, sprite_groups)
         hotbar.draw(Screen, grid_height * scaling)
         pygame.display.flip()
+        clock.tick(60)
 
 Block = {
     "Air":              Cell(None, None, "Air", 0, (0, 0, 0), -1, None),
