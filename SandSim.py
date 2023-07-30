@@ -1,7 +1,7 @@
 import pygame
 import math
 import random
-import time
+import cProfile
 
 grid_width = 100
 grid_height = 80
@@ -49,14 +49,17 @@ class Grid:
     def __init__(self, width, height):
         self.rows = height
         self.columns = width
-        grid = []
+        self.grid = []
+        self.unique_number_to_cell = {}
+
         for y in range(height, 0, -1):
             row = []
             for x in range(1, width + 1):
                 cell = Cell.create(x, y, "Air")
                 row.append(cell)
-            grid.append(row)
-        self.grid = grid
+                if cell.unique_number is not None:
+                    self.unique_number_to_cell[cell.unique_number] = cell
+            self.grid.append(row)
 
     def get(self, x, y):
         if 1 <= x <= self.columns and 1 <= y <= self.rows:
@@ -65,20 +68,19 @@ class Grid:
             return Block["Out Of Bounds"]
         
     def get_by_unique_number(self, unique_number):
-        for row in self.grid:
-            for cell in row:
-                if cell.unique_number == unique_number:
-                    return cell
-        return None
+        return self.unique_number_to_cell.get(unique_number)
         
     def set(self, x, y, name, unique_number):
         if unique_number is None:
             cell = Cell.create(x, y, name)
         else:
             cell = self.get_by_unique_number(unique_number)
-            cell.x = x
-            cell.y = y
+            if cell is not None:
+                cell.x = x
+                cell.y = y
         self.grid[self.rows - y][x - 1] = cell
+        if cell.unique_number is not None:
+            self.unique_number_to_cell[cell.unique_number] = cell
 
 class Hotbar:
     def __init__(self, block_types):
@@ -437,4 +439,5 @@ if __name__ == "__main__":
     grid = Grid(grid_width, grid_height)
     InitializeScreen()
     CreateSpriteGroups()
+    #cProfile.run('UpdateScreen()', filename='SandSimResults')
     UpdateScreen()
