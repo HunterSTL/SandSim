@@ -7,9 +7,10 @@ grid_height = 50
 scaling = 10
 
 fire_lifetime = 500
-smoke_lifetime = 100
-unique_number = 0
+smoke_lifetime = 200
+explosion_size = 5
 
+unique_number = 0
 max_frames = 10000
 
 class Cell:
@@ -27,7 +28,7 @@ class Cell:
         global unique_number
         unique_number += 1
         cls.unique_number = unique_number
-        return cls(x, y, name, Block[name].id, Block[name].color, Block[name].lifetime, unique_number)
+        return cls(x, y, name, Block[name].id, Block[name].color, random.randint(Block[name].lifetime // 2, Block[name].lifetime), unique_number)
 
 class Grid:
     def __init__(self, width, height):
@@ -339,12 +340,12 @@ def SimulateGrid(grid):
     def SimulateTNT():
         def ExplodeTNT(x, y):
             grid.set(x, y, "Air", None)
-            for dy in range(y - 3, y + 4): 
-                for dx in range(x - 3, x + 4):
+            for dy in range(y - 1 - explosion_size, y + 2 + explosion_size): 
+                for dx in range(x - 1 - explosion_size, x + 2 + explosion_size):
                     if grid.get(dx, dy).name == "TNT":
                         ExplodeTNT(dx, dy)
                     if dx > 0 and dx < grid_width and dy > 0 and dy < grid_height:
-                        grid.set(dx, dy, "Air", None)
+                        grid.set(dx, dy, "Smoke", None)
 
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
