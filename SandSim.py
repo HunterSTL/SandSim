@@ -1,3 +1,4 @@
+
 import pygame
 import math
 import random
@@ -9,6 +10,7 @@ scaling = 10
 
 fire_lifetime = 500
 smoke_lifetime = 200
+explosion_particle_lifetime = 10
 explosion_size = 5
 
 unique_number = 0
@@ -262,8 +264,8 @@ def SimulateGrid(grid):
                     updated_blocks.add((x, y + 1))
         ReduceLifetime(cell, 1)
 
-    def SimulateSmoke(unique_number, updated_blocks):
-        cell = grid.get_by_unique_number(unique_number)
+    def SimulateSmoke(cell, updated_blocks):
+        unique_number = cell.unique_number
 
         if grid.get(x, y + 1).name == "Air":
             grid.set(x, y + 1, "Smoke", unique_number)
@@ -292,17 +294,32 @@ def SimulateGrid(grid):
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).name == "Water":
                     return
-        
-        fire_count = 0
-        for dy in range(y - 1, y + 2): 
-            for dx in range(x - 1, x + 2):
-                if grid.get(dx, dy).name == "Fire":
-                    fire_count += 1
-        
-        fire_chance = 9 - fire_count
-        if fire_count > 0 and random.randint(1, fire_chance * 5) == 1:
-            grid.set(x, y, "Fire", None)
-            updated_blocks.add((x, y))
+
+        for reach in range(1, 3):
+            if grid.get(x, y - reach).name == "Fire":
+                if random.randint(1, 10 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x - reach, y - reach).name == "Fire":
+                if random.randint(1, 20 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x + reach, y - reach).name == "Fire":
+                if random.randint(1, 20 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x - reach, y).name == "Fire":
+                if random.randint(1, 25 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x + reach, y).name == "Fire":
+                if random.randint(1, 25 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x, y + reach).name == "Fire":
+                if random.randint(1, 100 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x - reach, y + reach).name == "Fire":
+                if random.randint(1, 200 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
+            elif grid.get(x + reach, y + reach).name == "Fire":
+                if random.randint(1, 200 * reach) == 1:
+                    grid.set(x, y, "Fire", None)
     
     def SimulateTNT():
         def ExplodeTNT(x, y):
@@ -312,13 +329,22 @@ def SimulateGrid(grid):
                     if grid.get(dx, dy).name == "TNT":
                         ExplodeTNT(dx, dy)
                     if dx > 0 and dx < grid_width and dy > 0 and dy < grid_height:
-                        grid.set(dx, dy, "Smoke", None)
+                        if random.randint(1, 3) == 1:
+                            grid.set(dx, dy, "Smoke", None)
+                        elif random.randint(1, 5) == 1:
+                            grid.set(dx, dy, "Explosion Particle", None)
+                        else:
+                            grid.set(dx, dy, "Air", None)
 
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).name == "Fire":
                     ExplodeTNT(x, y)
                     return
+                
+    def SimulateExplosionParticle(cell, updated_blocks):
+        ReduceLifetime(cell, 1)
+
 
     if simulation_running and not drawing:
         if frame < max_frames:
@@ -342,9 +368,12 @@ def SimulateGrid(grid):
                     elif cell.name == "Fire" and (x, y) not in updated_blocks:
                         SimulateFire(cell.unique_number, updated_blocks)
                     elif cell.name == "Smoke" and (x, y) not in updated_blocks:
-                        SimulateSmoke(cell.unique_number, updated_blocks)
+                        SimulateSmoke(cell, updated_blocks)
                     elif cell.name == "TNT" and (x, y) not in updated_blocks:
                         SimulateTNT()
+                    elif cell.name == "Explosion Particle" and (x, y) not in updated_blocks:
+                        SimulateExplosionParticle(cell, updated_blocks)
+                        pass
 
 def DrawGrid(Screen, sprite_groups):
     Screen.fill(Block["Air"].color)
@@ -413,17 +442,18 @@ def UpdateScreen():
         clock.tick(60)
 
 Block = {
-    "Air":              Cell(None, None, "Air", 0, (0, 0, 0), -1, None),
-    "Sand":             Cell(None, None, "Sand", 1, (200, 200, 0), -1, None),
-    "Rock":             Cell(None, None, "Rock", 2, (100, 100, 100), -1, None),
-    "Water":            Cell(None, None, "Water", 3, (100, 100, 255), -1, None),
-    "Wood":             Cell(None, None, "Wood", 4, (100, 50, 0), -1, None),
-    "Water Source":     Cell(None, None, "Water Source", 5, (50, 50, 127), -1, None),
-    "Sand Source":      Cell(None, None, "Sand Source", 6, (100, 100, 0), -1, None),
-    "Fire":             Cell(None, None, "Fire", 7, (245, 84, 66), fire_lifetime, None),
-    "Smoke":            Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None),
-    "TNT":              Cell(None, None, "TNT", 9, (255, 0, 0), -1, None),
-    "Out Of Bounds":    Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None)
+    "Air":                  Cell(None, None, "Air", 0, (0, 0, 0), -1, None),
+    "Sand":                 Cell(None, None, "Sand", 1, (200, 200, 0), -1, None),
+    "Rock":                 Cell(None, None, "Rock", 2, (100, 100, 100), -1, None),
+    "Water":                Cell(None, None, "Water", 3, (100, 100, 255), -1, None),
+    "Wood":                 Cell(None, None, "Wood", 4, (100, 50, 0), -1, None),
+    "Water Source":         Cell(None, None, "Water Source", 5, (50, 50, 127), -1, None),
+    "Sand Source":          Cell(None, None, "Sand Source", 6, (100, 100, 0), -1, None),
+    "Fire":                 Cell(None, None, "Fire", 7, (245, 84, 66), fire_lifetime, None),
+    "Smoke":                Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None),
+    "TNT":                  Cell(None, None, "TNT", 9, (255, 0, 0), -1, None),
+    "Explosion Particle":   Cell(None, None, "Explosion Particle", 10, (255, 150, 20), explosion_particle_lifetime, None),
+    "Out Of Bounds":        Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None)
 }
 
 if __name__ == "__main__":
@@ -439,5 +469,5 @@ if __name__ == "__main__":
     grid = Grid(grid_width, grid_height)
     InitializeScreen()
     CreateSpriteGroups()
-    #cProfile.run('UpdateScreen()', filename='SandSimResults')
-    UpdateScreen()
+    cProfile.run('UpdateScreen()', filename='SandSimResults')
+    #UpdateScreen()
