@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import time
 
 grid_width = 20
 grid_height = 30
@@ -412,6 +413,8 @@ def UpdateScreen():
     global drawing
     global erasing
 
+    clock = pygame.time.Clock()
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -456,6 +459,8 @@ def UpdateScreen():
         else:
             drawing = False
             erasing = False
+
+        clock.tick(60)
 
         SimulateGrid(grid)
         UpdateSpritePositions()
