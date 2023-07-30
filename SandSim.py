@@ -2,8 +2,8 @@ import pygame
 import math
 import random
 
-grid_width = 50
-grid_height = 50
+grid_width = 20
+grid_height = 30
 scaling = 10
 
 fire_lifetime = 500
@@ -26,9 +26,23 @@ class Cell:
     @classmethod
     def create(cls, x, y, name):
         global unique_number
+
         unique_number += 1
         cls.unique_number = unique_number
-        return cls(x, y, name, Block[name].id, Block[name].color, random.randint(Block[name].lifetime // 2, Block[name].lifetime), unique_number)
+
+        id = Block[name].id
+        initial_color = Block[name].color
+        initial_lifetime = Block[name].lifetime
+
+        if initial_lifetime != -1:
+            #between 80% and 100% 
+            lifetime_modifyer = random.random() * 0.2 + 0.8
+            initial_lifetime = int(initial_lifetime * lifetime_modifyer)
+            r = int(initial_color[0] * lifetime_modifyer)
+            g = int(initial_color[1] * lifetime_modifyer)
+            b = int(initial_color[2] * lifetime_modifyer)
+            initial_color = (r, g, b)
+        return cls(x, y, name, id, initial_color, initial_lifetime, unique_number)
 
 class Grid:
     def __init__(self, width, height):
@@ -61,6 +75,8 @@ class Grid:
             cell = Cell.create(x, y, name)
         else:
             cell = self.get_by_unique_number(unique_number)
+            cell.x = x
+            cell.y = y
         self.grid[self.rows - y][x - 1] = cell
 
 class Hotbar:
@@ -93,10 +109,10 @@ class Hotbar:
                 pygame.draw.rect(screen, (255, 0, 0), selected_block_rect_outer, 2)
 
 class Sprite(pygame.sprite.Sprite):
-    def __init__(self, x, y, name):
+    def __init__(self, x, y, cell):
         super().__init__()
         self.image = pygame.Surface((scaling, scaling))
-        self.image.fill(Block[name].color)
+        self.image.fill(cell.color)
         self.rect = self.image.get_rect()
         self.rect.topleft = (x * scaling, y * scaling)
 
@@ -111,6 +127,19 @@ def NameByID(id):
         if cell.id == id:
             return cell.name
     return ""
+
+def ReduceLifetime(cell, amount):
+    if cell.lifetime != -1:
+        cell.lifetime = max(cell.lifetime - amount, 0)
+
+        if cell.lifetime == 0:
+            grid.set(cell.x, cell.y, "Air", None)
+        else:
+            remaining_lifetime_ratio = cell.lifetime / Block[cell.name].lifetime
+            r = int(Block[cell.name].color[0] * remaining_lifetime_ratio)
+            g = int(Block[cell.name].color[1] * remaining_lifetime_ratio)
+            b = int(Block[cell.name].color[2] * remaining_lifetime_ratio)
+            cell.color = (r, g, b)
 
 def CursorLocation(mouse_x, mouse_y):
     mouse_x /= scaling
@@ -165,23 +194,23 @@ def CreateSpriteGroups():
     for y, row in enumerate(grid.grid):
         for x, cell in enumerate(row):
             if cell.name == "Sand":
-                sand_group.add(Sprite(x, y, "Sand"))
+                sand_group.add(Sprite(x, y, cell))
             elif cell.name == "Rock":
-                rock_group.add(Sprite(x, y, "Rock"))
+                rock_group.add(Sprite(x, y, cell))
             elif cell.name == "Water":
-                water_group.add(Sprite(x, y, "Water"))
+                water_group.add(Sprite(x, y, cell))
             elif cell.name == "Wood":
-                wood_group.add(Sprite(x, y, "Wood"))
+                wood_group.add(Sprite(x, y, cell))
             elif cell.name == "Water Source":
-                water_source_group.add(Sprite(x, y, "Water Source"))
+                water_source_group.add(Sprite(x, y, cell))
             elif cell.name == "Sand Source":
-                sand_source_group.add(Sprite(x, y, "Sand Source"))
+                sand_source_group.add(Sprite(x, y, cell))
             elif cell.name == "Fire":
-                fire_group.add(Sprite(x, y, "Fire"))
+                fire_group.add(Sprite(x, y, cell))
             elif cell.name == "Smoke":
-                smoke_group.add(Sprite(x, y, "Smoke"))
+                smoke_group.add(Sprite(x, y, cell))
             elif cell.name == "TNT":
-                tnt_group.add(Sprite(x, y, "TNT"))
+                tnt_group.add(Sprite(x, y, cell))
 
     sprite_groups = [air_group, sand_group, rock_group, water_group, wood_group, water_source_group, sand_source_group, fire_group, smoke_group, tnt_group]
 
@@ -200,23 +229,23 @@ def UpdateSpritePositions():
     for y, row in enumerate(grid.grid):
         for x, cell in enumerate(row):
             if cell.name == "Sand":
-                sand_group.add(Sprite(x, y, "Sand"))
+                sand_group.add(Sprite(x, y, cell))
             elif cell.name == "Rock":
-                rock_group.add(Sprite(x, y, "Rock"))
+                rock_group.add(Sprite(x, y, cell))
             elif cell.name == "Water":
-                water_group.add(Sprite(x, y, "Water"))
+                water_group.add(Sprite(x, y, cell))
             elif cell.name == "Wood":
-                wood_group.add(Sprite(x, y, "Wood"))
+                wood_group.add(Sprite(x, y, cell))
             elif cell.name == "Water Source":
-                water_source_group.add(Sprite(x, y, "Water Source"))
+                water_source_group.add(Sprite(x, y, cell))
             elif cell.name == "Sand Source":
-                sand_source_group.add(Sprite(x, y, "Sand Source"))
+                sand_source_group.add(Sprite(x, y, cell))
             elif cell.name == "Fire":
-                fire_group.add(Sprite(x, y, "Fire"))
+                fire_group.add(Sprite(x, y, cell))
             elif cell.name == "Smoke":
-                smoke_group.add(Sprite(x, y, "Smoke"))
+                smoke_group.add(Sprite(x, y, cell))
             elif cell.name == "TNT":
-                tnt_group.add(Sprite(x, y, "TNT"))
+                tnt_group.add(Sprite(x, y, cell))
 
 def SimulateGrid(grid):
     global frame
@@ -287,17 +316,10 @@ def SimulateGrid(grid):
                 if random.randint(1, 10) == 1:
                     grid.set(x, y + 1, "Smoke", None)
                     updated_blocks.add((x, y + 1))
-            cell.lifetime = max(cell.lifetime - 1, 0)
-            if cell.lifetime == 0:
-                grid.set(x, y, "Air", None)
+        ReduceLifetime(cell, 1)
 
     def SimulateSmoke(unique_number, updated_blocks):
         cell = grid.get_by_unique_number(unique_number)
-        if cell.lifetime > 0:
-            cell.lifetime = max(cell.lifetime - 1, 0)
-            if cell.lifetime == 0:
-                grid.set(x, y, "Air", None)
-                return
 
         if grid.get(x, y + 1).name == "Air":
             grid.set(x, y + 1, "Smoke", unique_number)
@@ -319,6 +341,7 @@ def SimulateGrid(grid):
             grid.set(x + 1, y, "Smoke", unique_number)
             grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y))
+        ReduceLifetime(cell, 1)
     
     def SimulateWood(updated_blocks):
         for dy in range(y - 1, y + 2): 
