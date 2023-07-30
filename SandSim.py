@@ -4,10 +4,10 @@ import random
 
 grid_width = 50
 grid_height = 50
-scaling = 20
+scaling = 10
 
 fire_lifetime = 500
-smoke_lifetime = 1000
+smoke_lifetime = 100
 unique_number = 0
 
 max_frames = 10000
@@ -55,8 +55,11 @@ class Grid:
                     return cell
         return None
         
-    def set(self, x, y, name):
-        cell = Cell.create(x, y, name)
+    def set(self, x, y, name, unique_number):
+        if unique_number is None:
+            cell = Cell.create(x, y, name)
+        else:
+            cell = self.get_by_unique_number(unique_number)
         self.grid[self.rows - y][x - 1] = cell
 
 class Hotbar:
@@ -217,108 +220,106 @@ def UpdateSpritePositions():
 def SimulateGrid(grid):
     global frame
 
-    def SimulateSand(x, y, updated_blocks):
+    def SimulateSand(unique_number, updated_blocks):
         if grid.get(x, y - 1).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x, y - 1, "Sand")
+            grid.set(x, y - 1, "Sand", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x, y - 1))
         elif grid.get(x, y - 1).name == "Water":
-            grid.set(x, y, "Water")
-            grid.set(x, y - 1, "Sand")
+            grid.set(x, y - 1, "Sand", unique_number)
+            grid.set(x, y, "Water", None)
             updated_blocks.add((x, y - 1))
         elif grid.get(x - 1, y - 1).name == "Air" and grid.get(x - 1, y).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x - 1, y - 1, "Sand")
+            grid.set(x - 1, y - 1, "Sand", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x - 1, y - 1))
         elif grid.get(x + 1, y - 1).name == "Air" and grid.get(x + 1, y).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x + 1, y - 1, "Sand")
+            grid.set(x + 1, y - 1, "Sand", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y - 1))
 
-    def SimulateWater(x, y, updated_blocks):
+    def SimulateWater(unique_number, updated_blocks):
         if grid.get(x, y - 1).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x, y - 1, "Water")
+            grid.set(x, y - 1, "Water", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x, y - 1))
         elif grid.get(x - 1, y).name == "Air" and grid.get(x + 1, y).name == "Air":
-            grid.set(x, y, "Air")
             if random.randint(1, 2) == 1:
-                grid.set(x - 1, y, "Water")
+                grid.set(x - 1, y, "Water", unique_number)
                 updated_blocks.add((x - 1, y))
             else:
-                grid.set(x + 1, y, "Water")
+                grid.set(x + 1, y, "Water", unique_number)
                 updated_blocks.add((x + 1, y))
+            grid.set(x, y, "Air", None)
         elif grid.get(x - 1, y).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x - 1, y, "Water")
+            grid.set(x - 1, y, "Water", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x - 1, y))
         elif grid.get(x + 1, y).name == "Air":
-            grid.set(x, y, "Air")
-            grid.set(x + 1, y, "Water")
+            grid.set(x + 1, y, "Water", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y))
 
-    def SimulateWaterSource(x, y, updated_blocks):
+    def SimulateWaterSource():
         if grid.get(x, y - 1).name == "Air":
-            grid.set(x, y - 1, "Water")
+            grid.set(x, y - 1, "Water", None)
         elif grid.get(x - 1, y).name == "Air":
-            grid.set(x - 1, y, "Water")
+            grid.set(x - 1, y, "Water", None)
         elif grid.get(x + 1, y).name == "Air":
-            grid.set(x + 1, y, "Water")
+            grid.set(x + 1, y, "Water", None)
 
-    def SimulateSandSource(x, y, updated_blocks):
+    def SimulateSandSource():
         if grid.get(x, y - 1).name == "Air":
-            grid.set(x, y - 1, "Sand")
+            grid.set(x, y - 1, "Sand", None)
     
-    def SimulateFire(x, y, updated_blocks):
+    def SimulateFire(unique_number, updated_blocks):
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).name == "Water":
-                    grid.set(x, y, "Wood")
+                    grid.set(x, y, "Wood", None)
+                    updated_blocks.add((x, y))
                     return
 
-        cell = grid.get(x, y)
+        cell = grid.get_by_unique_number(unique_number)
         if cell.lifetime > 0:
             if grid.get(x, y + 1).name == "Air":
                 if random.randint(1, 10) == 1:
-                    grid.set(x, y + 1, "Smoke")
-            updated_lifetime = max(cell.lifetime - 1, 0)
-            cell.lifetime = updated_lifetime
-            if updated_lifetime == 0:
-                grid.set(x, y, "Air")
+                    grid.set(x, y + 1, "Smoke", None)
+                    updated_blocks.add((x, y + 1))
+            cell.lifetime = max(cell.lifetime - 1, 0)
+            if cell.lifetime == 0:
+                grid.set(x, y, "Air", None)
 
     def SimulateSmoke(unique_number, updated_blocks):
-        cell_smoke = grid.get_by_unique_number(unique_number)
-        if cell_smoke.lifetime > 0:
-            updated_lifetime = max(cell_smoke.lifetime - 1, 0)
-            cell_smoke.lifetime = updated_lifetime
-            if updated_lifetime == 0:
-                grid.set(x, y, "Air")
+        cell = grid.get_by_unique_number(unique_number)
+        if cell.lifetime > 0:
+            cell.lifetime = max(cell.lifetime - 1, 0)
+            if cell.lifetime == 0:
+                grid.set(x, y, "Air", None)
                 return
 
         if grid.get(x, y + 1).name == "Air":
-            cell_smoke.y += 1
-            grid.set(x, y , "Air")
+            grid.set(x, y + 1, "Smoke", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x, y + 1))
         elif grid.get(x - 1, y + 1).name == "Air":
-            cell_smoke.x -= 1
-            cell_smoke.y += 1
-            grid.set(x, y, "Air")
+            grid.set(x - 1, y + 1, "Smoke", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x - 1, y + 1))
         elif grid.get(x + 1, y + 1).name == "Air":
-            cell_smoke.x += 1
-            cell_smoke.y += 1
-            grid.set(x, y, "Air")
+            grid.set(x + 1, y + 1, "Smoke", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y + 1))
         elif grid.get(x - 1, y).name == "Air":
-            cell_smoke.x -= 1
-            grid.set(x, y, "Air")
+            grid.set(x - 1, y, "Smoke", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x - 1, y))
         elif grid.get(x + 1, y).name == "Air":
-            cell_smoke.x += 1
-            grid.set(x, y, "Air")
+            grid.set(x + 1, y, "Smoke", unique_number)
+            grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y))
     
-    def SimulateWood(x, y, updated_blocks):
+    def SimulateWood(updated_blocks):
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).name == "Water":
@@ -330,19 +331,20 @@ def SimulateGrid(grid):
                 if grid.get(dx, dy).name == "Fire":
                     fire_count += 1
         
-        fire_chance = 8 - fire_count
+        fire_chance = 9 - fire_count
         if fire_count > 0 and random.randint(1, fire_chance * 5) == 1:
-            grid.set(x, y, "Fire")
+            grid.set(x, y, "Fire", None)
+            updated_blocks.add((x, y))
     
-    def SimulateTNT(x, y, updated_blocks):
+    def SimulateTNT():
         def ExplodeTNT(x, y):
-            grid.set(x, y, "Air")
+            grid.set(x, y, "Air", None)
             for dy in range(y - 3, y + 4): 
                 for dx in range(x - 3, x + 4):
                     if grid.get(dx, dy).name == "TNT":
                         ExplodeTNT(dx, dy)
                     if dx > 0 and dx < grid_width and dy > 0 and dy < grid_height:
-                        grid.set(dx, dy, "Air")
+                        grid.set(dx, dy, "Air", None)
 
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
@@ -360,21 +362,21 @@ def SimulateGrid(grid):
                     cell = grid.get(x, y)
 
                     if cell.name == "Sand" and (x, y) not in updated_blocks:
-                        SimulateSand(x, y, updated_blocks)
+                        SimulateSand(cell.unique_number, updated_blocks)
                     elif cell.name == "Water" and (x, y) not in updated_blocks:
-                        SimulateWater(x, y, updated_blocks)
+                        SimulateWater(cell.unique_number, updated_blocks)
                     elif cell.name == "Wood" and (x, y) not in updated_blocks:
-                        SimulateWood(x, y, updated_blocks)
+                        SimulateWood(updated_blocks)
                     elif cell.name == "Water Source" and (x, y) not in updated_blocks:
-                        SimulateWaterSource(x, y, updated_blocks)
+                        SimulateWaterSource()
                     elif cell.name == "Sand Source" and (x, y) not in updated_blocks:
-                        SimulateSandSource(x, y, updated_blocks)
+                        SimulateSandSource()
                     elif cell.name == "Fire" and (x, y) not in updated_blocks:
-                        SimulateFire(x, y, updated_blocks)
+                        SimulateFire(cell.unique_number, updated_blocks)
                     elif cell.name == "Smoke" and (x, y) not in updated_blocks:
                         SimulateSmoke(cell.unique_number, updated_blocks)
                     elif cell.name == "TNT" and (x, y) not in updated_blocks:
-                        SimulateTNT(x, y, updated_blocks)
+                        SimulateTNT()
 
 def DrawGrid(Screen, sprite_groups):
     Screen.fill(Block["Air"].color)
@@ -403,23 +405,23 @@ def UpdateScreen():
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
                     if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, hotbar.selected_block_name)
+                        grid.set(mouse_x, mouse_y, hotbar.selected_block_name, None)
                 elif event.button == 3:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
                     if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, "Air")
+                        grid.set(mouse_x, mouse_y, "Air", None)
             elif event.type == pygame.MOUSEMOTION:
                 if drawing:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
                     if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, hotbar.selected_block_name)
+                        grid.set(mouse_x, mouse_y, hotbar.selected_block_name, None)
                 elif erasing:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
                     if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, "Air")
+                        grid.set(mouse_x, mouse_y, "Air", None)
 
         if pygame.mouse.get_pressed()[0]:
             drawing = True
@@ -445,7 +447,7 @@ Block = {
     "Wood":             Cell(None, None, "Wood", 4, (100, 50, 0), -1, None),
     "Water Source":     Cell(None, None, "Water Source", 5, (50, 50, 127), -1, None),
     "Sand Source":      Cell(None, None, "Sand Source", 6, (100, 100, 0), -1, None),
-    "Fire":             Cell(None, None, "Fire", 7, (245, 84, 66), 500, None),
+    "Fire":             Cell(None, None, "Fire", 7, (245, 84, 66), fire_lifetime, None),
     "Smoke":            Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None),
     "TNT":              Cell(None, None, "TNT", 9, (255, 0, 0), -1, None),
     "Out Of Bounds":    Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None)
