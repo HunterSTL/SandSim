@@ -11,13 +11,14 @@ scaling = 10
 fire_lifetime = 500
 smoke_lifetime = 200
 explosion_particle_lifetime = 10
+lit_fuse_lifetime = 50
 explosion_size = 5
 
 unique_number = 0
 max_frames = 10000
 
 class Cell:
-    def __init__(self, x, y, name, id, color, lifetime, unique_number):
+    def __init__(self, x, y, name, id, color, lifetime, unique_number, burning):
         self.x = x
         self.y = y
         self.name = name
@@ -25,6 +26,7 @@ class Cell:
         self.color = color
         self.lifetime = lifetime
         self.unique_number = unique_number
+        self.burning = burning
 
     @classmethod
     def create(cls, x, y, name):
@@ -36,6 +38,7 @@ class Cell:
         id = Block[name].id
         initial_color = Block[name].color
         initial_lifetime = Block[name].lifetime
+        burning = Block[name].burning
 
         if initial_lifetime != -1:
             #between 80% and 100% 
@@ -45,7 +48,7 @@ class Cell:
             g = int(initial_color[1] * lifetime_modifyer)
             b = int(initial_color[2] * lifetime_modifyer)
             initial_color = (r, g, b)
-        return cls(x, y, name, id, initial_color, initial_lifetime, unique_number)
+        return cls(x, y, name, id, initial_color, initial_lifetime, unique_number, burning)
 
 class Grid:
     def __init__(self, width, height):
@@ -296,28 +299,28 @@ def SimulateGrid(grid):
                     return
 
         for reach in range(1, 3):
-            if grid.get(x, y - reach).name == "Fire":
+            if grid.get(x, y - reach).burning == True:
                 if random.randint(1, 10 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x - reach, y - reach).name == "Fire":
+            elif grid.get(x - reach, y - reach).burning == True:
                 if random.randint(1, 20 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x + reach, y - reach).name == "Fire":
+            elif grid.get(x + reach, y - reach).burning == True:
                 if random.randint(1, 20 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x - reach, y).name == "Fire":
+            elif grid.get(x - reach, y).burning == True:
                 if random.randint(1, 25 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x + reach, y).name == "Fire":
+            elif grid.get(x + reach, y).burning == True:
                 if random.randint(1, 25 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x, y + reach).name == "Fire":
+            elif grid.get(x, y + reach).burning == True:
                 if random.randint(1, 100 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x - reach, y + reach).name == "Fire":
+            elif grid.get(x - reach, y + reach).burning == True:
                 if random.randint(1, 200 * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x + reach, y + reach).name == "Fire":
+            elif grid.get(x + reach, y + reach).burning == True:
                 if random.randint(1, 200 * reach) == 1:
                     grid.set(x, y, "Fire", None)
     
@@ -338,42 +341,55 @@ def SimulateGrid(grid):
 
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
-                if grid.get(dx, dy).name == "Fire":
+                if grid.get(dx, dy).burning == True:
                     ExplodeTNT(x, y)
                     return
                 
-    def SimulateExplosionParticle(cell, updated_blocks):
+    def SimulateExplosionParticle(cell):
         ReduceLifetime(cell, 1)
 
+    def SimulateFuse():
+        for dy in range(y - 1, y + 2): 
+            for dx in range(x - 1, x + 2):
+                if grid.get(dx, dy).burning == True:
+                    grid.set(x, y, "Lit Fuse", None)
+                    return
+                
+    def SimulateLitFuse(cell):
+        ReduceLifetime(cell, 1)
 
     if simulation_running and not drawing:
         if frame < max_frames:
             frame += 1
             updated_blocks = set()
+            cell_positions = [(x, y) for x in range(1, grid_width + 1) for y in range(1, grid_height + 1)]
+            random.shuffle(cell_positions)
 
-            for x in range(1, grid_width + 1):
-                for y in range(1, grid_height + 1):
-                    cell = grid.get(x, y)
+            for x, y in cell_positions:
+                cell = grid.get(x, y)
 
-                    if cell.name == "Sand" and (x, y) not in updated_blocks:
-                        SimulateSand(cell.unique_number, updated_blocks)
-                    elif cell.name == "Water" and (x, y) not in updated_blocks:
-                        SimulateWater(cell.unique_number, updated_blocks)
-                    elif cell.name == "Wood" and (x, y) not in updated_blocks:
-                        SimulateWood(updated_blocks)
-                    elif cell.name == "Water Source" and (x, y) not in updated_blocks:
-                        SimulateWaterSource()
-                    elif cell.name == "Sand Source" and (x, y) not in updated_blocks:
-                        SimulateSandSource()
-                    elif cell.name == "Fire" and (x, y) not in updated_blocks:
-                        SimulateFire(cell.unique_number, updated_blocks)
-                    elif cell.name == "Smoke" and (x, y) not in updated_blocks:
-                        SimulateSmoke(cell, updated_blocks)
-                    elif cell.name == "TNT" and (x, y) not in updated_blocks:
-                        SimulateTNT()
-                    elif cell.name == "Explosion Particle" and (x, y) not in updated_blocks:
-                        SimulateExplosionParticle(cell, updated_blocks)
-                        pass
+                if cell.name == "Sand" and (x, y) not in updated_blocks:
+                    SimulateSand(cell.unique_number, updated_blocks)
+                elif cell.name == "Water" and (x, y) not in updated_blocks:
+                    SimulateWater(cell.unique_number, updated_blocks)
+                elif cell.name == "Wood" and (x, y) not in updated_blocks:
+                    SimulateWood(updated_blocks)
+                elif cell.name == "Water Source" and (x, y) not in updated_blocks:
+                    SimulateWaterSource()
+                elif cell.name == "Sand Source" and (x, y) not in updated_blocks:
+                    SimulateSandSource()
+                elif cell.name == "Fire" and (x, y) not in updated_blocks:
+                    SimulateFire(cell.unique_number, updated_blocks)
+                elif cell.name == "Smoke" and (x, y) not in updated_blocks:
+                    SimulateSmoke(cell, updated_blocks)
+                elif cell.name == "TNT" and (x, y) not in updated_blocks:
+                    SimulateTNT()
+                elif cell.name == "Explosion Particle" and (x, y) not in updated_blocks:
+                    SimulateExplosionParticle(cell)
+                elif cell.name == "Fuse" and (x, y) not in updated_blocks:
+                    SimulateFuse()
+                elif cell.name == "Lit Fuse" and (x, y) not in updated_blocks:
+                    SimulateLitFuse(cell)
 
 def DrawGrid(Screen, sprite_groups):
     Screen.fill(Block["Air"].color)
@@ -442,18 +458,20 @@ def UpdateScreen():
         clock.tick(60)
 
 Block = {
-    "Air":                  Cell(None, None, "Air", 0, (0, 0, 0), -1, None),
-    "Sand":                 Cell(None, None, "Sand", 1, (200, 200, 0), -1, None),
-    "Rock":                 Cell(None, None, "Rock", 2, (100, 100, 100), -1, None),
-    "Water":                Cell(None, None, "Water", 3, (100, 100, 255), -1, None),
-    "Wood":                 Cell(None, None, "Wood", 4, (100, 50, 0), -1, None),
-    "Water Source":         Cell(None, None, "Water Source", 5, (50, 50, 127), -1, None),
-    "Sand Source":          Cell(None, None, "Sand Source", 6, (100, 100, 0), -1, None),
-    "Fire":                 Cell(None, None, "Fire", 7, (245, 84, 66), fire_lifetime, None),
-    "Smoke":                Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None),
-    "TNT":                  Cell(None, None, "TNT", 9, (255, 0, 0), -1, None),
-    "Explosion Particle":   Cell(None, None, "Explosion Particle", 10, (255, 150, 20), explosion_particle_lifetime, None),
-    "Out Of Bounds":        Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None)
+    "Air":                  Cell(None, None, "Air", 0, (0, 0, 0), -1, None, False),
+    "Sand":                 Cell(None, None, "Sand", 1, (200, 200, 0), -1, None, False),
+    "Rock":                 Cell(None, None, "Rock", 2, (100, 100, 100), -1, None, False),
+    "Water":                Cell(None, None, "Water", 3, (100, 100, 255), -1, None, False),
+    "Wood":                 Cell(None, None, "Wood", 4, (100, 50, 0), -1, None, False),
+    "Water Source":         Cell(None, None, "Water Source", 5, (28, 21, 189), -1, None, False),
+    "Sand Source":          Cell(None, None, "Sand Source", 6, (212, 136, 15), -1, None, False),
+    "Fire":                 Cell(None, None, "Fire", 7, (232, 55, 23), fire_lifetime, None, True),
+    "Smoke":                Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None, False),
+    "TNT":                  Cell(None, None, "TNT", 9, (255, 0, 0), -1, None, False),
+    "Explosion Particle":   Cell(None, None, "Explosion Particle", 10, (255, 150, 20), explosion_particle_lifetime, None, False),
+    "Fuse":                 Cell(None, None, "Fuse", 11, (0, 54, 11), -1, None, False),
+    "Lit Fuse":             Cell(None, None, "Lit Fuse", 12, (232, 55, 23), lit_fuse_lifetime, None, True),
+    "Out Of Bounds":        Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None, False)
 }
 
 if __name__ == "__main__":
