@@ -17,7 +17,7 @@ unique_number = 0
 max_frames = 10000
 
 class Cell:
-    def __init__(self, x, y, name, id, color, lifetime, unique_number, burning):
+    def __init__(self, x, y, name, id, color, lifetime, unique_number, burning, state):
         self.x = x
         self.y = y
         self.name = name
@@ -26,6 +26,7 @@ class Cell:
         self.lifetime = lifetime
         self.unique_number = unique_number
         self.burning = burning
+        self.state = state
 
     @classmethod
     def create(cls, x, y, name):
@@ -38,6 +39,7 @@ class Cell:
         initial_color = Block[name].color
         initial_lifetime = Block[name].lifetime
         burning = Block[name].burning
+        state = Block[name].state
 
         if initial_lifetime != -1:
             #between 80% and 100% 
@@ -47,7 +49,7 @@ class Cell:
             g = int(initial_color[1] * lifetime_modifyer)
             b = int(initial_color[2] * lifetime_modifyer)
             initial_color = (r, g, b)
-        return cls(x, y, name, id, initial_color, initial_lifetime, unique_number, burning)
+        return cls(x, y, name, id, initial_color, initial_lifetime, unique_number, burning, state)
 
 class Grid:
     def __init__(self, width, height):
@@ -204,43 +206,50 @@ def SimulateGrid(grid):
     global frame
 
     def SimulateSand(unique_number, updated_blocks):
-        if grid.get(x, y - 1).name == "Air":
+        cell_below = grid.get(x, y - 1)
+        cell_left = grid.get(x - 1, y)
+        cell_right = grid.get(x + 1, y)
+        cell_below_left = grid.get(x - 1, y - 1)
+        cell_below_right = grid.get(x + 1, y - 1)
+
+        if cell_below.state == "Gas" or cell_below.state == "Liquid":
             grid.set(x, y - 1, "Sand", unique_number)
-            grid.set(x, y, "Air", None)
+            grid.set(x, y, cell_below.name, cell_below.unique_number)
             updated_blocks.add((x, y - 1))
-        elif grid.get(x, y - 1).name == "Water":
-            grid.set(x, y - 1, "Sand", unique_number)
-            grid.set(x, y, "Water", None)
-            updated_blocks.add((x, y - 1))
-        elif grid.get(x - 1, y - 1).name == "Air" and grid.get(x - 1, y).name == "Air":
+        elif (cell_below_left.state == "Gas" or cell_below_left.state == "Liquid") and (cell_left.state == "Gas" or cell_left.state == "Liquid"):
             grid.set(x - 1, y - 1, "Sand", unique_number)
-            grid.set(x, y, "Air", None)
+            grid.set(x, y, cell_below_left.name, cell_below_left.unique_number)
             updated_blocks.add((x - 1, y - 1))
-        elif grid.get(x + 1, y - 1).name == "Air" and grid.get(x + 1, y).name == "Air":
+        elif (cell_below_right.state == "Gas" or cell_below_right.state == "Liquid") and (cell_right.state == "Gas" or cell_right.state == "Liquid"):
             grid.set(x + 1, y - 1, "Sand", unique_number)
-            grid.set(x, y, "Air", None)
+            grid.set(x, y, cell_below_right.name, cell_below_right.unique_number)
             updated_blocks.add((x + 1, y - 1))
 
     def SimulateWater(unique_number, updated_blocks):
-        if grid.get(x, y - 1).name == "Air":
+        cell_below = grid.get(x, y - 1)
+        cell_left = grid.get(x - 1, y)
+        cell_right = grid.get(x + 1, y)
+
+        if cell_below.state == "Gas":
             grid.set(x, y - 1, "Water", unique_number)
-            grid.set(x, y, "Air", None)
+            grid.set(x, y, cell_below.name, cell_below.unique_number)
             updated_blocks.add((x, y - 1))
-        elif grid.get(x - 1, y).name == "Air" and grid.get(x + 1, y).name == "Air":
+        elif cell_left.state == "Gas" and cell_right.state == "Gas":
             if random.randint(1, 2) == 1:
                 grid.set(x - 1, y, "Water", unique_number)
+                grid.set(x, y, cell_left.name, cell_left.unique_number)
                 updated_blocks.add((x - 1, y))
             else:
                 grid.set(x + 1, y, "Water", unique_number)
+                grid.set(x, y, cell_right.name, cell_right.unique_number)
                 updated_blocks.add((x + 1, y))
-            grid.set(x, y, "Air", None)
-        elif grid.get(x - 1, y).name == "Air":
+        elif cell_left.state == "Gas":
             grid.set(x - 1, y, "Water", unique_number)
-            grid.set(x, y, "Air", None)
+            grid.set(x, y, cell_left.name, cell_left.unique_number)
             updated_blocks.add((x - 1, y))
-        elif grid.get(x + 1, y).name == "Air":
+        elif cell_right.state == "Gas":
             grid.set(x + 1, y, "Water", unique_number)
-            grid.set(x, y, "Air", None)
+            grid.set(x, y, cell_right.name, cell_right.unique_number)
             updated_blocks.add((x + 1, y))
 
     def SimulateWaterSource():
@@ -414,8 +423,6 @@ def DrawBrushOutline(screen):
     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
     brush_size = hotbar.brush_size
     brush_rect = pygame.Rect((mouse_x - brush_size) * scaling, (grid_height - mouse_y - brush_size + 1) * scaling, (2 * brush_size - 1) * scaling, (2 * brush_size - 1) * scaling)
-
-    #DrawGrid(screen, sprite_groups)
     pygame.draw.rect(screen, (255, 255, 255), brush_rect, 1)
     prev_brush_pos = (mouse_x, mouse_y)
 
@@ -482,7 +489,6 @@ def UpdateScreen():
             SimulateGrid(grid)
             UpdateSpritePositions()
         DrawGrid(Screen, sprite_groups)
-
         DrawBrushOutline(Screen)
 
         hotbar.draw(Screen, grid_height * scaling)
@@ -490,20 +496,20 @@ def UpdateScreen():
         clock.tick(60)
 
 Block = {
-    "Air":                  Cell(None, None, "Air", 0, (0, 0, 0), -1, None, False),
-    "Sand":                 Cell(None, None, "Sand", 1, (200, 200, 0), -1, None, False),
-    "Rock":                 Cell(None, None, "Rock", 2, (100, 100, 100), -1, None, False),
-    "Water":                Cell(None, None, "Water", 3, (100, 100, 255), -1, None, False),
-    "Wood":                 Cell(None, None, "Wood", 4, (100, 50, 0), -1, None, False),
-    "Water Source":         Cell(None, None, "Water Source", 5, (28, 21, 189), -1, None, False),
-    "Sand Source":          Cell(None, None, "Sand Source", 6, (212, 136, 15), -1, None, False),
-    "Fire":                 Cell(None, None, "Fire", 7, (232, 55, 23), fire_lifetime, None, True),
-    "Smoke":                Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None, False),
-    "TNT":                  Cell(None, None, "TNT", 9, (255, 0, 0), -1, None, False),
-    "Explosion Particle":   Cell(None, None, "Explosion Particle", 10, (255, 150, 20), explosion_particle_lifetime, None, False),
-    "Fuse":                 Cell(None, None, "Fuse", 11, (0, 54, 11), -1, None, False),
-    "Lit Fuse":             Cell(None, None, "Lit Fuse", 12, (232, 55, 23), lit_fuse_lifetime, None, True),
-    "Out Of Bounds":        Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None, False)
+    "Air":                  Cell(None, None, "Air", 0, (0, 0, 0), -1, None, False, "Gas"),
+    "Sand":                 Cell(None, None, "Sand", 1, (200, 200, 0), -1, None, False, "Solid"),
+    "Rock":                 Cell(None, None, "Rock", 2, (100, 100, 100), -1, None, False, "Solid"),
+    "Water":                Cell(None, None, "Water", 3, (100, 100, 255), -1, None, False, "Liquid"),
+    "Wood":                 Cell(None, None, "Wood", 4, (100, 50, 0), -1, None, False, "Solid"),
+    "Water Source":         Cell(None, None, "Water Source", 5, (28, 21, 189), -1, None, False, "Solid"),
+    "Sand Source":          Cell(None, None, "Sand Source", 6, (212, 136, 15), -1, None, False, "Solid"),
+    "Fire":                 Cell(None, None, "Fire", 7, (232, 55, 23), fire_lifetime, None, True, "Solid"),
+    "Smoke":                Cell(None, None, "Smoke", 8, (150, 150, 150), smoke_lifetime, None, False, "Gas"),
+    "TNT":                  Cell(None, None, "TNT", 9, (255, 0, 0), -1, None, False, "Solid"),
+    "Explosion Particle":   Cell(None, None, "Explosion Particle", 10, (255, 150, 20), explosion_particle_lifetime, None, False, "Gas"),
+    "Fuse":                 Cell(None, None, "Fuse", 11, (0, 54, 11), -1, None, False, "Solid"),
+    "Lit Fuse":             Cell(None, None, "Lit Fuse", 12, (232, 55, 23), lit_fuse_lifetime, None, True, "Solid"),
+    "Out Of Bounds":        Cell(None, None, "Out Of Bounds", 999, (0, 255, 0), -1, None, False, "Solid")
 }
 
 if __name__ == "__main__":
