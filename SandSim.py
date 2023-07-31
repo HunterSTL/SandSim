@@ -426,6 +426,11 @@ def UpdateScreen():
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
                     if mouse_x + mouse_y > 0:
                         grid.set(mouse_x, mouse_y, "Air", None)
+            elif event.type == pygame.MOUSEWHEEL:
+                if event.y == 1:
+                    hotbar.select_next_block()
+                elif event.y == -1:
+                    hotbar.select_previous_block()
             elif event.type == pygame.MOUSEMOTION:
                 if drawing:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
