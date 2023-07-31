@@ -1,4 +1,3 @@
-
 import pygame
 import math
 import random
@@ -8,8 +7,8 @@ grid_width = 100
 grid_height = 80
 scaling = 10
 
-fire_lifetime = 500
-smoke_lifetime = 200
+fire_lifetime = 200
+smoke_lifetime = 100
 explosion_particle_lifetime = 10
 lit_fuse_lifetime = 50
 explosion_size = 5
@@ -96,7 +95,7 @@ class Hotbar:
         self.brush_size = 1
 
     def change_brush_size(self, size):
-        if 0 < self.brush_size + size < 5:
+        if 0 < self.brush_size + size < 10:
             self.brush_size += size
 
     def select_next_block(self):
@@ -408,10 +407,24 @@ def BrushStroke(x, y, name):
             if 0 < dx < grid_width + 1 and 0 < dy < grid_height + 1:
                 grid.set(dx, dy, name, None)
 
+def DrawBrushOutline(screen):
+    global prev_brush_pos
+
+    actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
+    mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
+    brush_size = hotbar.brush_size
+    brush_rect = pygame.Rect((mouse_x - brush_size) * scaling, (grid_height - mouse_y - brush_size + 1) * scaling, (2 * brush_size - 1) * scaling, (2 * brush_size - 1) * scaling)
+
+    #DrawGrid(screen, sprite_groups)
+    pygame.draw.rect(screen, (255, 255, 255), brush_rect, 1)
+    prev_brush_pos = (mouse_x, mouse_y)
+
 def UpdateScreen():
     global simulation_running
     global drawing
     global erasing
+    global prev_brush_pos
+    global prev_brush_size
 
     clock = pygame.time.Clock()
 
@@ -468,7 +481,9 @@ def UpdateScreen():
         if simulation_running or drawing or erasing:
             SimulateGrid(grid)
             UpdateSpritePositions()
-            DrawGrid(Screen, sprite_groups)
+        DrawGrid(Screen, sprite_groups)
+
+        DrawBrushOutline(Screen)
 
         hotbar.draw(Screen, grid_height * scaling)
         pygame.display.flip()
@@ -500,9 +515,11 @@ if __name__ == "__main__":
     for i in range(len(Block)):
         block_types.append(i)
     hotbar = Hotbar(block_types)
+    prev_brush_pos = (-1, -1)
+    prev_brush_size = hotbar.brush_size
 
     grid = Grid(grid_width, grid_height)
     InitializeScreen()
     CreateSpriteGroups()
-    cProfile.run('UpdateScreen()', filename='SandSimResults')
-    #UpdateScreen()
+    #cProfile.run('UpdateScreen()', filename='SandSimResults')
+    UpdateScreen()
