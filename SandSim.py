@@ -93,6 +93,11 @@ class Hotbar:
         self.selected_block = 0
         self.block_size = 4
         self.selected_block_name = Block[NameByID(self.selected_block)].name
+        self.brush_size = 1
+
+    def change_brush_size(self, size):
+        if 0 < self.brush_size + size < 5:
+            self.brush_size += size
 
     def select_next_block(self):
         self.selected_block = (self.selected_block + 1) % (len(self.block_types) - 1)
@@ -396,6 +401,13 @@ def DrawGrid(Screen, sprite_groups):
     for sprite_group in sprite_groups:
         sprite_group.draw(Screen)
 
+def BrushStroke(x, y, name):
+    size = hotbar.brush_size
+    for dy in range(y + 1 - size, y + size): 
+        for dx in range(x + 1 - size, x + size):
+            if 0 < dx < grid_width + 1 and 0 < dy < grid_height + 1:
+                grid.set(dx, dy, name, None)
+
 def UpdateScreen():
     global simulation_running
     global drawing
@@ -415,17 +427,19 @@ def UpdateScreen():
                     hotbar.select_next_block()
                 elif event.key == pygame.K_LEFT:
                     hotbar.select_previous_block()
+                elif event.key == pygame.K_UP:
+                    hotbar.change_brush_size(1)
+                elif event.key == pygame.K_DOWN:
+                    hotbar.change_brush_size(-1)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
-                    if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, hotbar.selected_block_name, None)
+                    BrushStroke(mouse_x, mouse_y, hotbar.selected_block_name)
                 elif event.button == 3:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
-                    if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, "Air", None)
+                    BrushStroke(mouse_x, mouse_y, "Air")
             elif event.type == pygame.MOUSEWHEEL:
                 if event.y == 1:
                     hotbar.select_next_block()
@@ -435,13 +449,11 @@ def UpdateScreen():
                 if drawing:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
-                    if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, hotbar.selected_block_name, None)
+                    BrushStroke(mouse_x, mouse_y, hotbar.selected_block_name)
                 elif erasing:
                     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
                     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
-                    if mouse_x + mouse_y > 0:
-                        grid.set(mouse_x, mouse_y, "Air", None)
+                    BrushStroke(mouse_x, mouse_y, "Air")
 
         if pygame.mouse.get_pressed()[0]:
             drawing = True
