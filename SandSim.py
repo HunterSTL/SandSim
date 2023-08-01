@@ -164,11 +164,9 @@ def CursorLocation(mouse_x, mouse_y):
     mouse_y = math.ceil(mouse_y)
     mouse_y = grid_height + 1 - mouse_y
 
-    if mouse_x <= 0 or mouse_x > grid_width:
-        return 0, 0
-    if mouse_y <= 0 or mouse_y > grid_height:
-        return 0, 0
-    return mouse_x, mouse_y
+    if 0 < mouse_x < grid_width and 0 < mouse_y < grid_height:
+        return mouse_x, mouse_y
+    return 0, 0
 
 def InitializeScreen():
     global Screen
@@ -444,6 +442,8 @@ def DrawGrid(Screen, sprite_groups):
         sprite_group.draw(Screen)
 
 def BrushStroke(x, y, name):
+    if x == 0 or y == 0:
+        return
     size = hotbar.brush_size
     for dy in range(y + 1 - size, y + size): 
         for dx in range(x + 1 - size, x + size):
@@ -455,10 +455,12 @@ def DrawBrushOutline(screen):
 
     actual_mouse_x, actual_mouse_y = pygame.mouse.get_pos()
     mouse_x, mouse_y = CursorLocation(actual_mouse_x, actual_mouse_y)
-    brush_size = hotbar.brush_size
-    brush_rect = pygame.Rect((mouse_x - brush_size) * scaling, (grid_height - mouse_y - brush_size + 1) * scaling, (2 * brush_size - 1) * scaling, (2 * brush_size - 1) * scaling)
-    pygame.draw.rect(screen, (255, 255, 255), brush_rect, 1)
-    prev_brush_pos = (mouse_x, mouse_y)
+
+    if mouse_x > 0 and mouse_y > 0:
+        brush_size = hotbar.brush_size
+        brush_rect = pygame.Rect((mouse_x - brush_size) * scaling, (grid_height - mouse_y - brush_size + 1) * scaling, (2 * brush_size - 1) * scaling, (2 * brush_size - 1) * scaling)
+        pygame.draw.rect(screen, (255, 255, 255), brush_rect, 1)
+        prev_brush_pos = (mouse_x, mouse_y)
 
 def UpdateScreen():
     global simulation_running
@@ -558,7 +560,7 @@ if __name__ == "__main__":
     for i in range(len(Block)):
         block_types.append(i)
     hotbar = Hotbar(block_types)
-    prev_brush_pos = (-1, -1)
+    prev_brush_pos = (None, None)
     prev_brush_size = hotbar.brush_size
 
     grid = Grid(grid_width, grid_height)
