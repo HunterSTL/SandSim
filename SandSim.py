@@ -3,8 +3,8 @@ import math
 import random
 import cProfile
 
-grid_width = 100
-grid_height = 80
+grid_width = 50
+grid_height = 100
 scaling = 10
 
 fire_lifetime = 200
@@ -253,18 +253,23 @@ def SimulateGrid(grid):
             updated_blocks.add((x + 1, y))
 
     def SimulateWaterSource():
-        if grid.get(x, y - 1).name == "Air":
+        cell_below = grid.get(x, y - 1)
+        cell_left = grid.get(x - 1, y)
+        cell_right = grid.get(x + 1, y)
+
+        if cell_below.state == "Gas":
             grid.set(x, y - 1, "Water", None)
-        elif grid.get(x - 1, y).name == "Air":
+        elif cell_left.state == "Gas":
             grid.set(x - 1, y, "Water", None)
-        elif grid.get(x + 1, y).name == "Air":
+        elif cell_right.state == "Gas":
             grid.set(x + 1, y, "Water", None)
 
     def SimulateSandSource():
-        if grid.get(x, y - 1).name == "Air":
+        cell_below = grid.get(x, y - 1)
+        if cell_below.state == "Gas":
             grid.set(x, y - 1, "Sand", None)
     
-    def SimulateFire(unique_number, updated_blocks):
+    def SimulateFire(cell, updated_blocks):
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).name == "Water":
@@ -272,9 +277,8 @@ def SimulateGrid(grid):
                     updated_blocks.add((x, y))
                     return
 
-        cell = grid.get_by_unique_number(unique_number)
         if cell.lifetime > 0:
-            if grid.get(x, y + 1).name == "Air":
+            if grid.get(x, y + 1).state == "Gas":
                 if random.randint(1, 10) == 1:
                     grid.set(x, y + 1, "Smoke", None)
                     updated_blocks.add((x, y + 1))
@@ -282,24 +286,40 @@ def SimulateGrid(grid):
 
     def SimulateSmoke(cell, updated_blocks):
         unique_number = cell.unique_number
+        cell_above = grid.get(x, y + 1)
+        cell_above_left = grid.get(x - 1, y + 1)
+        cell_above_right = grid.get(x + 1, y + 1)
+        cell_left = grid.get(x - 1, y)
+        cell_right = grid.get(x + 1, y)
 
-        if grid.get(x, y + 1).name == "Air":
+        if cell_above.name == "Air" and cell_above_left.name == "Air" and cell_above_right.name == "Air":
+            random_choice = random.randint(1, 3)
+
+            if random_choice == 1:
+                grid.set(x, y + 1, "Smoke", unique_number)
+                updated_blocks.add((x, y + 1))
+            elif random_choice == 2:
+                grid.set(x - 1, y + 1, "Smoke", unique_number)
+                updated_blocks.add((x - 1, y + 1))
+            else:
+                grid.set(x + 1, y + 1, "Smoke", unique_number)
+            grid.set(x, y, "Air", None)
+        elif cell_above.name == "Air":
             grid.set(x, y + 1, "Smoke", unique_number)
             grid.set(x, y, "Air", None)
-            updated_blocks.add((x, y + 1))
-        elif grid.get(x - 1, y + 1).name == "Air":
+        elif cell_above_left.name == "Air":
             grid.set(x - 1, y + 1, "Smoke", unique_number)
             grid.set(x, y, "Air", None)
             updated_blocks.add((x - 1, y + 1))
-        elif grid.get(x + 1, y + 1).name == "Air":
+        elif cell_above_right.name == "Air":
             grid.set(x + 1, y + 1, "Smoke", unique_number)
             grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y + 1))
-        elif grid.get(x - 1, y).name == "Air":
+        elif cell_left.name == "Air":
             grid.set(x - 1, y, "Smoke", unique_number)
             grid.set(x, y, "Air", None)
             updated_blocks.add((x - 1, y))
-        elif grid.get(x + 1, y).name == "Air":
+        elif cell_right.name == "Air":
             grid.set(x + 1, y, "Smoke", unique_number)
             grid.set(x, y, "Air", None)
             updated_blocks.add((x + 1, y))
@@ -392,7 +412,7 @@ def SimulateGrid(grid):
                 elif cell.name == "Sand Source" and (x, y) not in updated_blocks:
                     SimulateSandSource()
                 elif cell.name == "Fire" and (x, y) not in updated_blocks:
-                    SimulateFire(cell.unique_number, updated_blocks)
+                    SimulateFire(cell, updated_blocks)
                 elif cell.name == "Smoke" and (x, y) not in updated_blocks:
                     SimulateSmoke(cell, updated_blocks)
                 elif cell.name == "TNT" and (x, y) not in updated_blocks:
