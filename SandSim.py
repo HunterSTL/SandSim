@@ -2,6 +2,8 @@ import pygame
 import math
 import random
 import cProfile
+import time
+import multiprocessing
 
 grid_width = 50
 grid_height = 100
@@ -456,6 +458,7 @@ def UpdateScreen():
     clock = pygame.time.Clock()
 
     while True:
+        start_time = time.time_ns()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -513,6 +516,8 @@ def UpdateScreen():
 
         hotbar.draw(Screen, grid_height * scaling)
         pygame.display.flip()
+        simulation_time = (time.time_ns() - start_time) // 1_000_000
+        print("Simulation Time:\t" + str(simulation_time) + "ms")
         clock.tick(60)
 
 Block = {
