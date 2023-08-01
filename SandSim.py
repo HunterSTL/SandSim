@@ -3,7 +3,7 @@ import math
 import random
 import cProfile
 import time
-import multiprocessing
+import queue
 
 grid_width = 50
 grid_height = 100
@@ -360,25 +360,37 @@ def SimulateGrid(grid):
                     grid.set(x, y, "Fire", None)
     
     def SimulateTNT():
+        tnt_cells = queue.Queue()
+
         def ExplodeTNT(x, y):
             grid.set(x, y, "Air", None)
-            for dy in range(y - 1 - explosion_size, y + 2 + explosion_size): 
-                for dx in range(x - 1 - explosion_size, x + 2 + explosion_size):
-                    if grid.get(dx, dy).name == "TNT":
-                        ExplodeTNT(dx, dy)
-                    if dx > 0 and dx < grid_width and dy > 0 and dy < grid_height:
-                        if random.randint(1, 3) == 1:
-                            grid.set(dx, dy, "Smoke", None)
-                        elif random.randint(1, 5) == 1:
-                            grid.set(dx, dy, "Explosion Particle", None)
-                        else:
-                            grid.set(dx, dy, "Air", None)
+            tnt_cells.put((x, y))
+
+        def ExplodeAdjacentTNT():
+            new_tnt_cells = queue.Queue()
+            while not tnt_cells.empty():
+                x, y = tnt_cells.get()
+                for dy in range(y - 1 - explosion_size, y + 2 + explosion_size): 
+                    for dx in range(x - 1 - explosion_size, x + 2 + explosion_size):
+                        if grid.get(dx, dy).name == "TNT":
+                            new_tnt_cells.put((dx, dy))
+                        if dx > 0 and dx < grid_width and dy > 0 and dy < grid_height:
+                            if random.randint(1, 3) == 1:
+                                grid.set(dx, dy, "Smoke", None)
+                            elif random.randint(1, 5) == 1:
+                                grid.set(dx, dy, "Explosion Particle", None)
+                            else:
+                                grid.set(dx, dy, "Air", None)
+            return new_tnt_cells
 
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).burning == True:
                     ExplodeTNT(x, y)
-                    return
+                    break
+
+        while not tnt_cells.empty():
+            tnt_cells = ExplodeAdjacentTNT()
                 
     def SimulateExplosionParticle(cell):
         ReduceLifetime(cell, 1)
@@ -517,7 +529,7 @@ def UpdateScreen():
         hotbar.draw(Screen, grid_height * scaling)
         pygame.display.flip()
         simulation_time = (time.time_ns() - start_time) // 1_000_000
-        print("Simulation Time:\t" + str(simulation_time) + "ms")
+        print("frame:\t" + str(simulation_time) + "ms")
         clock.tick(60)
 
 Block = {
