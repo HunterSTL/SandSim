@@ -531,7 +531,7 @@ def UpdateScreen():
         hotbar.draw(Screen, grid_height * scaling)
         pygame.display.flip()
         simulation_time = (time.time_ns() - start_time) // 1_000_000
-        print("frame:\t" + str(simulation_time) + "ms")
+        #print("frame:\t" + str(simulation_time) + "ms")
         clock.tick(60)
 
 Block = {
@@ -566,5 +566,5 @@ if __name__ == "__main__":
     grid = Grid(grid_width, grid_height)
     InitializeScreen()
     CreateSpriteGroups()
-    #cProfile.run('UpdateScreen()', filename='SandSimResults')
+    cProfile.run('UpdateScreen()', filename='SandSimResults')
     UpdateScreen()
