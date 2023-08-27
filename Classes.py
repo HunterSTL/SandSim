@@ -1,9 +1,6 @@
 import pygame
 import random
 
-grid_width = 50
-scaling = 10
-
 fire_lifetime = 200
 smoke_lifetime = 100
 explosion_particle_lifetime = 10
@@ -91,9 +88,9 @@ class Hotbar:
         self.selected_block_name = Block[NameByID(self.selected_block)].name
         self.brush_size = 1
 
-    def change_brush_size(self, size):
-        if 0 < self.brush_size + size < 10:
-            self.brush_size += size
+    def change_brush_size(self, increment):
+        if 0 < self.brush_size + increment < 10:
+            self.brush_size += increment
 
     def select_next_block(self):
         self.selected_block = (self.selected_block + 1) % (len(self.block_types) - 1)
@@ -103,8 +100,8 @@ class Hotbar:
         self.selected_block = (self.selected_block - 1) % (len(self.block_types) - 1)
         self.selected_block_name = Block[NameByID(self.selected_block)].name
 
-    def draw(self, screen, y_offset):
-        hotbar_rect = pygame.Rect(0, y_offset, grid_width * self.block_size * self.block_size, self.block_size)
+    def draw(self, screen, y_offset, screen_width):
+        hotbar_rect = pygame.Rect(0, y_offset, screen_width, self.block_size)
         pygame.draw.rect(screen, (50, 50, 50), hotbar_rect)
 
         for i, id in enumerate(self.block_types):
@@ -118,7 +115,7 @@ class Hotbar:
                 pygame.draw.rect(screen, (255, 0, 0), selected_block_rect_outer, 2)
 
 class Sprite(pygame.sprite.Sprite):
-    def __init__(self, x, y, cell):
+    def __init__(self, x, y, cell, scaling):
         super().__init__()
         self.image = pygame.Surface((scaling, scaling))
         self.image.fill(cell.color)

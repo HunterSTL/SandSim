@@ -5,9 +5,9 @@ import math
 import cProfile
 import time
 
-grid_width = 50
-grid_height = 100
-scaling = 10
+grid_width = 100
+grid_height = 50
+scaling = 5
 
 unique_number = 0
 
@@ -40,7 +40,7 @@ def CreateSpriteGroups():
     for y, row in enumerate(grid.grid):
         for x, cell in enumerate(row):
             if cell.name != "Air":
-                sprite_groups[cell.id].add(Sprite(x, y, cell))
+                sprite_groups[cell.id].add(Sprite(x, y, cell, scaling))
 
 def UpdateSpritePositions():
     global sprite_groups
@@ -51,7 +51,7 @@ def UpdateSpritePositions():
     for y, row in enumerate(grid.grid):
         for x, cell in enumerate(row):
             if cell.name != "Air":
-                sprite_groups[cell.id].add(Sprite(x, y, cell))
+                sprite_groups[cell.id].add(Sprite(x, y, cell, scaling))
 
 def DrawGrid(Screen, sprite_groups):
     Screen.fill(Block["Air"].color)
@@ -146,7 +146,7 @@ def UpdateScreen():
         DrawGrid(Screen, sprite_groups)
         DrawBrushOutline(Screen)
 
-        hotbar.draw(Screen, grid_height * scaling)
+        hotbar.draw(Screen, grid_height * scaling, grid_width * scaling)
         pygame.display.flip()
         simulation_time = (time.time_ns() - start_time) // 1_000_000
         #print("frame:\t" + str(simulation_time) + "ms")
@@ -167,5 +167,5 @@ if __name__ == "__main__":
     grid = Grid(grid_width, grid_height)
     Screen = InitializeScreen()
     CreateSpriteGroups()
-    #cProfile.run('UpdateScreen()', filename='SandSimResults')
-    UpdateScreen()
+    cProfile.run('UpdateScreen()', filename='SandSimResults')
+    #UpdateScreen()

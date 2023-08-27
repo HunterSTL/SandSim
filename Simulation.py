@@ -139,36 +139,24 @@ def SimulateGrid(grid, simulation_running):
         ReduceLifetime(cell, 1)
     
     def SimulateWood(updated_blocks):
+        # Check for adjacent water
         for dy in range(y - 1, y + 2): 
             for dx in range(x - 1, x + 2):
                 if grid.get(dx, dy).name == "Water":
                     return
 
+        # List of directions to check
+        directions = [(0, -1), (-1, -1), (1, -1), (-1, 0), (1, 0), (0, 1), (-1, 1), (1, 1)]
+        # Corresponding probabilities for each direction
+        probabilities = [10, 20, 20, 25, 25, 100, 200, 200]
+
+        # Loop through reach and direction
         for reach in range(1, 3):
-            if grid.get(x, y - reach).burning == True:
-                if random.randint(1, 10 * reach) == 1:
+            for (dx, dy), prob in zip(directions, probabilities):
+                target_x, target_y = x + dx * reach, y + dy * reach
+                if grid.get(target_x, target_y).burning and random.randint(1, prob * reach) == 1:
                     grid.set(x, y, "Fire", None)
-            elif grid.get(x - reach, y - reach).burning == True:
-                if random.randint(1, 20 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
-            elif grid.get(x + reach, y - reach).burning == True:
-                if random.randint(1, 20 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
-            elif grid.get(x - reach, y).burning == True:
-                if random.randint(1, 25 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
-            elif grid.get(x + reach, y).burning == True:
-                if random.randint(1, 25 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
-            elif grid.get(x, y + reach).burning == True:
-                if random.randint(1, 100 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
-            elif grid.get(x - reach, y + reach).burning == True:
-                if random.randint(1, 200 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
-            elif grid.get(x + reach, y + reach).burning == True:
-                if random.randint(1, 200 * reach) == 1:
-                    grid.set(x, y, "Fire", None)
+                    return
     
     def SimulateTNT():
         tnt_cells = queue.Queue()
